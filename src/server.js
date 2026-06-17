@@ -2,6 +2,7 @@ require("dotenv").config({ quiet: true });
 
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const mysql = require("mysql2/promise");
 
 // Import routes
@@ -10,6 +11,7 @@ const userRoutes = require("./routes/userRoutes");
 const academicRoutes = require("./routes/academicRoutes");
 const assignmentRoutes = require("./routes/assignmentRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
+const teacherRoutes = require("./routes/teacherRoutes");
 
 const app = express();
 
@@ -37,6 +39,7 @@ app.use(
     credentials: true,
   }),
 );
+app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -82,6 +85,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/academics", academicRoutes);
 app.use("/api/assignments", assignmentRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/teachers", teacherRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

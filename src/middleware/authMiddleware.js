@@ -3,15 +3,13 @@ const { sendError } = require("../utils/responseHandler");
 
 function authMiddleware(req, res, next) {
   try {
-    const authHeader = req.headers.authorization;
+    const token = req.cookies?.auth_token || null;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return sendError(res, "Missing or invalid authorization header", 401);
+    if (!token) {
+      return sendError(res, "Authentication failed: missing token", 401);
     }
 
-    const token = authHeader.substring(7);
     const payload = verifyToken(token);
-
     req.user = payload;
     next();
   } catch (error) {

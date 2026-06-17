@@ -1,6 +1,8 @@
 const express = require("express");
 const {
-  login,
+  loginStudent,
+  loginTeacher,
+  loginAdmin,
   logout,
   getCurrentUser,
   setupAdmin,
@@ -9,7 +11,9 @@ const { authMiddleware } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-router.post("/login", login);
+router.post("/login/student", loginStudent);
+router.post("/login/teacher", loginTeacher);
+router.post("/login/admin", loginAdmin);
 router.post("/logout", authMiddleware, logout);
 router.get("/me", authMiddleware, getCurrentUser);
 router.post("/setup-admin", setupAdmin);
