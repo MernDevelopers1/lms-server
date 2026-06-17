@@ -1,0 +1,22 @@
+{
+  "name": "viion-tech-project",
+  "version": "1.0.0",
+  "main": "./src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "db:migrate": "node src/scripts/run-sql-file.js database/migrations/001_create_lms_tables.sql",
+    "db:seed": "node src/scripts/run-sql-file.js database/seeds/001_seed_lms_tables.sql",
+    "db:setup": "npm run db:migrate && npm run db:seed"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mysql2": "^3.15.3"
+  }
+}
