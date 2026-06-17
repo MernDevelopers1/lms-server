@@ -82,10 +82,10 @@ app.get("/api/health/db", async (req, res, next) => {
 // Register routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/teachers", teacherRoutes);
 app.use("/api/academics", academicRoutes);
 app.use("/api/assignments", assignmentRoutes);
 app.use("/api/attendance", attendanceRoutes);
-app.use("/api/teachers", teacherRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
