@@ -1,15 +1,13 @@
-const crypto = require("crypto");
+const bcrypt = require("bcrypt");
 
-// Simple password hashing utility (in production, use bcrypt)
+const SALT_ROUNDS = 10;
+
 function hashPassword(password) {
-  return crypto
-    .pbkdf2Sync(password, "salt", 1000, 64, "sha512")
-    .toString("hex");
+  return bcrypt.hashSync(password, SALT_ROUNDS);
 }
 
 function verifyPassword(password, hash) {
-  const newHash = hashPassword(password);
-  return newHash === hash;
+  return bcrypt.compareSync(password, hash);
 }
 
 module.exports = { hashPassword, verifyPassword };
