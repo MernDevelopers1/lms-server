@@ -166,4 +166,4 @@ async function getCurrentUser(req, res, next) {
   }
 }
 
-module.exports = { login, logout, getCurrentUser };
+module.exports = { login, logout, setupAdmin, getCurrentUser };
