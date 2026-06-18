@@ -1,5 +1,6 @@
 const { sendSuccess, sendError } = require("../utils/responseHandler");
 const { hashPassword } = require("../utils/passwordUtils");
+const { buildSortClause } = require("../utils/queryUtils");
 
 async function getStudentRoleId(req) {
   const [roles] = await req.pool.query("SELECT id FROM roles WHERE name = ?", [
@@ -23,6 +24,8 @@ async function getStudents(req, res, next) {
     const page = parseInt(req.query.page || "1", 10);
     const limit = parseInt(req.query.limit || "20", 10);
     const search = (req.query.search || "").trim();
+    const sortBy = String(req.query.sortBy || "").trim();
+    const sortOrder = String(req.query.sortOrder || "asc").trim();
     const offset = (page - 1) * limit;
 
     const conditions = ["r.name = ?"];
@@ -45,6 +48,21 @@ async function getStudents(req, res, next) {
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
+    const sortClause = buildSortClause(
+      sortBy,
+      sortOrder,
+      {
+        firstName: "u.first_name",
+        lastName: "u.last_name",
+        email: "u.email",
+        registrationNo: "sp.registration_no",
+        admissionNo: "sp.admission_no",
+        gender: "sp.gender",
+        status: "u.status",
+      },
+      "u.id DESC",
+    );
+
     const [rows] = await req.pool.query(
       `SELECT u.id, u.first_name AS firstName, u.last_name AS lastName, u.email, u.phone, u.status, 
               sp.registration_no AS registrationNo, sp.admission_no AS admissionNo, sp.gender, 
@@ -54,7 +72,7 @@ async function getStudents(req, res, next) {
        JOIN roles r ON ur.role_id = r.id
        LEFT JOIN student_profiles sp ON sp.user_id = u.id
        ${whereClause}
-       ORDER BY u.id DESC
+       ${sortClause}
        LIMIT ?
        OFFSET ?`,
       [...params, limit, offset],

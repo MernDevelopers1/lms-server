@@ -1,10 +1,13 @@
 const { sendSuccess, sendError } = require("../utils/responseHandler");
+const { buildSortClause } = require("../utils/queryUtils");
 
 async function getTimetables(req, res, next) {
   try {
     const page = parseInt(req.query.page || "1", 10);
     const limit = parseInt(req.query.limit || "20", 10);
     const search = (req.query.search || "").trim();
+    const sortBy = String(req.query.sortBy || "").trim();
+    const sortOrder = String(req.query.sortOrder || "asc").trim();
     const offset = (page - 1) * limit;
 
     const conditions = [];
@@ -27,6 +30,21 @@ async function getTimetables(req, res, next) {
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
+    const sortClause = buildSortClause(
+      sortBy,
+      sortOrder,
+      {
+        sectionName: "sec.name",
+        className: "cl.name",
+        subjectName: "sub.name",
+        teacherName: "teacherName",
+        roomName: "r.room_name",
+        lectureSlotTitle: "ls.title",
+        dayOfWeek: "t.day_of_week",
+      },
+      "t.id DESC",
+    );
+
     const [rows] = await req.pool.query(
       `SELECT t.id,
               t.section_id AS sectionId,
@@ -48,7 +66,7 @@ async function getTimetables(req, res, next) {
              LEFT JOIN rooms r ON t.room_id = r.id
              LEFT JOIN lecture_slots ls ON t.lecture_slot_id = ls.id
              ${whereClause}
-             ORDER BY t.id DESC
+             ${sortClause}
              LIMIT ?
              OFFSET ?`,
       [...params, limit, offset],

@@ -1,29 +1,45 @@
 const { sendSuccess, sendError } = require("../utils/responseHandler");
+const { buildSortClause } = require("../utils/queryUtils");
 
 async function getClasses(req, res, next) {
   try {
     const page = parseInt(req.query.page || "1", 10);
     const limit = parseInt(req.query.limit || "20", 10);
     const search = (req.query.search || "").trim();
+    const sortBy = String(req.query.sortBy || "").trim();
+    const sortOrder = String(req.query.sortOrder || "asc").trim();
     const offset = (page - 1) * limit;
 
     const conditions = [];
     const params = [];
 
     if (search) {
-      conditions.push(`(c.name LIKE ? OR c.description LIKE ? OR ay.title LIKE ?)`);
+      conditions.push(
+        `(c.name LIKE ? OR c.description LIKE ? OR ay.title LIKE ?)`,
+      );
       const searchParam = `%${search}%`;
       params.push(searchParam, searchParam, searchParam);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const sortClause = buildSortClause(
+      sortBy,
+      sortOrder,
+      {
+        name: "c.name",
+        academicYearTitle: "ay.title",
+        description: "c.description",
+      },
+      "c.id DESC",
+    );
 
     const [rows] = await req.pool.query(
       `SELECT c.id, c.name, c.description, c.academic_year_id AS academicYearId, ay.title AS academicYearTitle
        FROM classes c
        LEFT JOIN academic_years ay ON c.academic_year_id = ay.id
        ${whereClause}
-       ORDER BY c.id DESC
+       ${sortClause}
        LIMIT ?
        OFFSET ?`,
       [...params, limit, offset],
@@ -82,11 +98,7 @@ async function createClass(req, res, next) {
     const { name, description, academicYearId } = req.body;
 
     if (!name || !academicYearId) {
-      return sendError(
-        res,
-        "Class name and academic year are required",
-        400,
-      );
+      return sendError(res, "Class name and academic year are required", 400);
     }
 
     // Check if academic year exists

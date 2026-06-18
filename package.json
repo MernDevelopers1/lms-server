@@ -6,7 +6,8 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "db:migrate": "node src/scripts/run-sql-file.js database/migrations/001_create_lms_tables.sql",
-    "db:seed": "node src/scripts/run-sql-file.js database/seeds/001_seed_lms_tables.sql",
+    "db:seed": "node src/scripts/run-sql-file.js database/seeds/002_bulk_seed.sql",
+    "db:seed:initial": "node src/scripts/run-sql-file.js database/seeds/001_seed_lms_tables.sql",
     "db:setup": "npm run db:migrate && npm run db:seed"
   },
   "keywords": [],

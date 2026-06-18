@@ -1,17 +1,15 @@
 const { sendSuccess, sendError } = require("../utils/responseHandler");
+const { buildSortClause } = require("../utils/queryUtils");
 
-const LIVE_CLASS_STATUSES = [
-  "scheduled",
-  "live",
-  "completed",
-  "cancelled",
-];
+const LIVE_CLASS_STATUSES = ["scheduled", "live", "completed", "cancelled"];
 
 async function getLiveClasses(req, res, next) {
   try {
     const page = parseInt(req.query.page || "1", 10);
     const limit = parseInt(req.query.limit || "20", 10);
     const search = (req.query.search || "").trim();
+    const sortBy = String(req.query.sortBy || "").trim();
+    const sortOrder = String(req.query.sortOrder || "asc").trim();
     const offset = (page - 1) * limit;
 
     const conditions = [];
@@ -32,7 +30,23 @@ async function getLiveClasses(req, res, next) {
       );
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const sortClause = buildSortClause(
+      sortBy,
+      sortOrder,
+      {
+        title: "lc.title",
+        sectionName: "sec.name",
+        className: "cl.name",
+        subjectName: "sub.name",
+        teacherName: "teacherName",
+        startTime: "lc.start_time",
+        status: "lc.status",
+      },
+      "lc.id DESC",
+    );
 
     const [rows] = await req.pool.query(
       `SELECT lc.id,
@@ -60,7 +74,7 @@ async function getLiveClasses(req, res, next) {
          LEFT JOIN teacher_profiles tp ON tp.id = lc.teacher_id
          LEFT JOIN users u ON tp.user_id = u.id
          ${whereClause}
-         ORDER BY lc.id DESC
+         ${sortClause}
          LIMIT ?
          OFFSET ?`,
       [...params, limit, offset],
@@ -156,7 +170,14 @@ async function createLiveClass(req, res, next) {
       status,
     } = req.body;
 
-    if (!sectionId || !subjectId || !teacherId || !title || !startTime || !durationMinutes) {
+    if (
+      !sectionId ||
+      !subjectId ||
+      !teacherId ||
+      !title ||
+      !startTime ||
+      !durationMinutes
+    ) {
       return sendError(
         res,
         "Section, subject, teacher, title, start time, and duration are required",
@@ -166,11 +187,12 @@ async function createLiveClass(req, res, next) {
 
     const normalizedStartTime = String(startTime).replace("T", " ");
     // Ensure format is YYYY-MM-DD HH:mm:ss (add :00 if only HH:mm)
-    const formattedStartTime = normalizedStartTime.includes(":") && 
+    const formattedStartTime =
+      normalizedStartTime.includes(":") &&
       normalizedStartTime.split(":").length === 2
-      ? `${normalizedStartTime}:00`
-      : normalizedStartTime;
-    
+        ? `${normalizedStartTime}:00`
+        : normalizedStartTime;
+
     if (Number.isNaN(new Date(formattedStartTime).getTime())) {
       return sendError(res, "A valid start time is required", 400);
     }
@@ -364,11 +386,12 @@ async function updateLiveClass(req, res, next) {
     if (startTime !== undefined) {
       const normalizedStartTime = String(startTime).replace("T", " ");
       // Ensure format is YYYY-MM-DD HH:mm:ss (add :00 if only HH:mm)
-      const formattedStartTime = normalizedStartTime.includes(":") && 
+      const formattedStartTime =
+        normalizedStartTime.includes(":") &&
         normalizedStartTime.split(":").length === 2
-        ? `${normalizedStartTime}:00`
-        : normalizedStartTime;
-      
+          ? `${normalizedStartTime}:00`
+          : normalizedStartTime;
+
       if (Number.isNaN(new Date(formattedStartTime).getTime())) {
         return sendError(res, "A valid start time is required", 400);
       }

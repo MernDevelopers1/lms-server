@@ -1,23 +1,39 @@
 const { sendSuccess, sendError } = require("../utils/responseHandler");
+const { buildSortClause } = require("../utils/queryUtils");
 
 async function getRooms(req, res, next) {
   try {
     const page = parseInt(req.query.page || "1", 10);
     const limit = parseInt(req.query.limit || "20", 10);
     const search = (req.query.search || "").trim();
+    const sortBy = String(req.query.sortBy || "").trim();
+    const sortOrder = String(req.query.sortOrder || "asc").trim();
     const offset = (page - 1) * limit;
 
     const conditions = [];
     const params = [];
 
     if (search) {
-      conditions.push("(room_no LIKE ? OR room_name LIKE ? OR building LIKE ?)");
+      conditions.push(
+        "(room_no LIKE ? OR room_name LIKE ? OR building LIKE ?)",
+      );
       const searchParam = `%${search}%`;
       params.push(searchParam, searchParam, searchParam);
     }
 
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const sortClause = buildSortClause(
+      sortBy,
+      sortOrder,
+      {
+        roomNo: "room_no",
+        roomName: "room_name",
+        building: "building",
+        capacity: "capacity",
+      },
+      "id DESC",
+    );
 
     const [rows] = await req.pool.query(
       `SELECT id,
@@ -27,7 +43,7 @@ async function getRooms(req, res, next) {
               capacity
        FROM rooms
        ${whereClause}
-       ORDER BY id DESC
+       ${sortClause}
        LIMIT ?
        OFFSET ?`,
       [...params, limit, offset],
@@ -185,7 +201,10 @@ async function updateRoom(req, res, next) {
 
     if (updates.length > 0) {
       values.push(id);
-      await req.pool.query(`UPDATE rooms SET ${updates.join(", ")} WHERE id = ?`, values);
+      await req.pool.query(
+        `UPDATE rooms SET ${updates.join(", ")} WHERE id = ?`,
+        values,
+      );
     }
 
     const [updatedRows] = await req.pool.query(

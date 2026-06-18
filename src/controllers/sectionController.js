@@ -1,10 +1,13 @@
 const { sendSuccess, sendError } = require("../utils/responseHandler");
+const { buildSortClause } = require("../utils/queryUtils");
 
 async function getSections(req, res, next) {
   try {
     const page = parseInt(req.query.page || "1", 10);
     const limit = parseInt(req.query.limit || "20", 10);
     const search = (req.query.search || "").trim();
+    const sortBy = String(req.query.sortBy || "").trim();
+    const sortOrder = String(req.query.sortOrder || "asc").trim();
     const classId = req.query.classId ? parseInt(req.query.classId, 10) : null;
     const offset = (page - 1) * limit;
 
@@ -22,7 +25,19 @@ async function getSections(req, res, next) {
       params.push(classId);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const sortClause = buildSortClause(
+      sortBy,
+      sortOrder,
+      {
+        name: "s.name",
+        className: "c.name",
+        academicYearTitle: "ay.title",
+        capacity: "s.capacity",
+      },
+      "s.id DESC",
+    );
 
     const [rows] = await req.pool.query(
       `SELECT s.id, s.name, s.capacity, s.class_id AS classId, c.name AS className, c.academic_year_id AS academicYearId, ay.title AS academicYearTitle
@@ -30,7 +45,7 @@ async function getSections(req, res, next) {
        LEFT JOIN classes c ON s.class_id = c.id
        LEFT JOIN academic_years ay ON c.academic_year_id = ay.id
        ${whereClause}
-       ORDER BY s.id DESC
+       ${sortClause}
        LIMIT ?
        OFFSET ?`,
       [...params, limit, offset],
@@ -167,7 +182,11 @@ async function updateSection(req, res, next) {
       }
     }
 
-    if (capacity !== undefined && capacity !== null && (isNaN(capacity) || capacity <= 0)) {
+    if (
+      capacity !== undefined &&
+      capacity !== null &&
+      (isNaN(capacity) || capacity <= 0)
+    ) {
       return sendError(res, "Capacity must be a positive number", 400);
     }
 

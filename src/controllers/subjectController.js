@@ -1,30 +1,43 @@
 const { sendSuccess, sendError } = require("../utils/responseHandler");
+const { buildSortClause } = require("../utils/queryUtils");
 
 async function getSubjects(req, res, next) {
   try {
     const page = parseInt(req.query.page || "1", 10);
     const limit = parseInt(req.query.limit || "20", 10);
     const search = (req.query.search || "").trim();
+    const sortBy = String(req.query.sortBy || "").trim();
+    const sortOrder = String(req.query.sortOrder || "asc").trim();
     const offset = (page - 1) * limit;
 
     const conditions = [];
     const params = [];
 
     if (search) {
-      conditions.push(
-        `(name LIKE ? OR code LIKE ? OR description LIKE ?)`
-      );
+      conditions.push(`(name LIKE ? OR code LIKE ? OR description LIKE ?)`);
       const searchParam = `%${search}%`;
       params.push(searchParam, searchParam, searchParam);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const sortClause = buildSortClause(
+      sortBy,
+      sortOrder,
+      {
+        code: "code",
+        name: "name",
+        totalMarks: "total_marks",
+        passingMarks: "passing_marks",
+      },
+      "id DESC",
+    );
 
     const [rows] = await req.pool.query(
       `SELECT id, code, name, description, total_marks AS totalMarks, passing_marks AS passingMarks, created_at AS createdAt, updated_at AS updatedAt
        FROM subjects
        ${whereClause}
-       ORDER BY id DESC
+       ${sortClause}
        LIMIT ?
        OFFSET ?`,
       [...params, limit, offset],
