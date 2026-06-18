@@ -46,10 +46,10 @@ SET FOREIGN_KEY_CHECKS = 1;
 INSERT INTO users
   (id, first_name, last_name, email, password_hash, phone, profile_image, status, last_login)
 VALUES
-  (1, 'System', 'Admin', 'admin@school.test', '$2b$10$examplehashforlocaldevelopmentonly', '+920000000001', NULL, 'active', '2026-06-16 09:00:00'),
-  (2, 'Ayesha', 'Khan', 'teacher@school.test', '$2b$10$examplehashforlocaldevelopmentonly', '+920000000002', NULL, 'active', '2026-06-16 09:10:00'),
-  (3, 'Ali', 'Raza', 'student@school.test', '$2b$10$examplehashforlocaldevelopmentonly', '+920000000003', NULL, 'active', '2026-06-16 09:20:00'),
-  (4, 'Sara', 'Raza', 'parent@school.test', '$2b$10$examplehashforlocaldevelopmentonly', '+920000000004', NULL, 'active', '2026-06-16 09:30:00');
+  (1, 'System', 'Admin', 'admin@school.test', '$2b$10$Bs0CS33ZN1ASv8DcdobJve.8.9jF0JQTngZuOWLapyzlx/snvGlpS', '+920000000001', NULL, 'active', '2026-06-16 09:00:00'),
+  (2, 'Ayesha', 'Khan', 'teacher@school.test', '$2b$10$Bs0CS33ZN1ASv8DcdobJve.8.9jF0JQTngZuOWLapyzlx/snvGlpS', '+920000000002', NULL, 'active', '2026-06-16 09:10:00'),
+  (3, 'Ali', 'Raza', 'student@school.test', '$2b$10$Bs0CS33ZN1ASv8DcdobJve.8.9jF0JQTngZuOWLapyzlx/snvGlpS', '+920000000003', NULL, 'active', '2026-06-16 09:20:00'),
+  (4, 'Sara', 'Raza', 'parent@school.test', '$2b$10$Bs0CS33ZN1ASv8DcdobJve.8.9jF0JQTngZuOWLapyzlx/snvGlpS', '+920000000004', NULL, 'active', '2026-06-16 09:30:00');
 
 INSERT INTO roles (id, name, description)
 VALUES
