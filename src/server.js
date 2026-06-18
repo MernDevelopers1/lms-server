@@ -19,6 +19,7 @@ const timetableRoutes = require("./routes/timetableRoutes");
 const sectionRoutes = require("./routes/sectionRoutes");
 const subjectRoutes = require("./routes/subjectRoutes");
 const lectureSlotRoutes = require("./routes/lectureSlotRoutes");
+const roomRoutes = require("./routes/roomRoutes");
 
 const app = express();
 
@@ -95,6 +96,7 @@ app.use("/api/classes", classRoutes);
 app.use("/api/sections", sectionRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/lecture-slots", lectureSlotRoutes);
+app.use("/api/rooms", roomRoutes);
 app.use("/api/live-classes", liveClassRoutes);
 app.use("/api/timetables", timetableRoutes);
 app.use("/api/academics", academicRoutes);
