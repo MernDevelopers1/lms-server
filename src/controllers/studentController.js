@@ -1,11 +1,10 @@
 const { sendSuccess, sendError } = require("../utils/responseHandler");
 const { hashPassword } = require("../utils/passwordUtils");
 
-async function getTeacherRoleId(req) {
-  const [roles] = await req.pool.query(
-    "SELECT id FROM roles WHERE name = ?",
-    ["Teacher"],
-  );
+async function getStudentRoleId(req) {
+  const [roles] = await req.pool.query("SELECT id FROM roles WHERE name = ?", [
+    "Student",
+  ]);
 
   if (roles.length > 0) {
     return roles[0].id;
@@ -13,13 +12,13 @@ async function getTeacherRoleId(req) {
 
   const [result] = await req.pool.query(
     "INSERT INTO roles (name, description, created_at) VALUES (?, ?, NOW())",
-    ["Teacher", "Teacher role"],
+    ["Student", "Student role"],
   );
 
   return result.insertId;
 }
 
-async function getTeachers(req, res, next) {
+async function getStudents(req, res, next) {
   try {
     const page = parseInt(req.query.page || "1", 10);
     const limit = parseInt(req.query.limit || "20", 10);
@@ -27,24 +26,33 @@ async function getTeachers(req, res, next) {
     const offset = (page - 1) * limit;
 
     const conditions = ["r.name = ?"];
-    const params = ["Teacher"];
+    const params = ["Student"];
 
     if (search) {
       conditions.push(
-        `(u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ? OR tp.employee_no LIKE ? OR tp.designation LIKE ?)`,
+        `(u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ? OR sp.registration_no LIKE ? OR sp.admission_no LIKE ?)`,
       );
       const searchParam = `%${search}%`;
-      params.push(searchParam, searchParam, searchParam, searchParam, searchParam);
+      params.push(
+        searchParam,
+        searchParam,
+        searchParam,
+        searchParam,
+        searchParam,
+      );
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const [rows] = await req.pool.query(
-      `SELECT u.id, tp.id AS profileId, u.first_name AS firstName, u.last_name AS lastName, u.email, u.phone, u.status, tp.employee_no AS employeeNo, tp.designation, tp.qualification, tp.joining_date AS joiningDate, tp.address
+      `SELECT u.id, u.first_name AS firstName, u.last_name AS lastName, u.email, u.phone, u.status, 
+              sp.registration_no AS registrationNo, sp.admission_no AS admissionNo, sp.gender, 
+              sp.date_of_birth AS dateOfBirth, sp.admission_date AS admissionDate, sp.address
        FROM users u
        JOIN user_roles ur ON u.id = ur.user_id
        JOIN roles r ON ur.role_id = r.id
-       LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+       LEFT JOIN student_profiles sp ON sp.user_id = u.id
        ${whereClause}
        ORDER BY u.id DESC
        LIMIT ?
@@ -57,7 +65,7 @@ async function getTeachers(req, res, next) {
        FROM users u
        JOIN user_roles ur ON u.id = ur.user_id
        JOIN roles r ON ur.role_id = r.id
-       LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+       LEFT JOIN student_profiles sp ON sp.user_id = u.id
        ${whereClause}`,
       params,
     );
@@ -65,7 +73,7 @@ async function getTeachers(req, res, next) {
     sendSuccess(
       res,
       {
-        teachers: rows,
+        students: rows,
         pagination: {
           total: Number(countRows[0].count || 0),
           page,
@@ -73,38 +81,40 @@ async function getTeachers(req, res, next) {
           pages: Math.ceil(Number(countRows[0].count || 0) / limit),
         },
       },
-      "Teachers retrieved successfully",
+      "Students retrieved successfully",
     );
   } catch (error) {
     next(error);
   }
 }
 
-async function getTeacherById(req, res, next) {
+async function getStudentById(req, res, next) {
   try {
     const { id } = req.params;
 
     const [rows] = await req.pool.query(
-      `SELECT u.id, tp.id AS profileId, u.first_name AS firstName, u.last_name AS lastName, u.email, u.phone, u.status, tp.employee_no AS employeeNo, tp.designation, tp.qualification, tp.joining_date AS joiningDate, tp.address
+      `SELECT u.id, u.first_name AS firstName, u.last_name AS lastName, u.email, u.phone, u.status, 
+              sp.registration_no AS registrationNo, sp.admission_no AS admissionNo, sp.gender, 
+              sp.date_of_birth AS dateOfBirth, sp.admission_date AS admissionDate, sp.address
        FROM users u
        JOIN user_roles ur ON u.id = ur.user_id
        JOIN roles r ON ur.role_id = r.id
-       LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+       LEFT JOIN student_profiles sp ON sp.user_id = u.id
        WHERE u.id = ? AND r.name = ?`,
-      [id, "Teacher"],
+      [id, "Student"],
     );
 
     if (rows.length === 0) {
-      return sendError(res, "Teacher not found", 404);
+      return sendError(res, "Student not found", 404);
     }
 
-    sendSuccess(res, rows[0], "Teacher retrieved successfully");
+    sendSuccess(res, rows[0], "Student retrieved successfully");
   } catch (error) {
     next(error);
   }
 }
 
-async function createTeacher(req, res, next) {
+async function createStudent(req, res, next) {
   try {
     const {
       firstName,
@@ -112,18 +122,19 @@ async function createTeacher(req, res, next) {
       email,
       password,
       phone,
-      employeeNo,
-      designation,
-      qualification,
-      joiningDate,
+      registrationNo,
+      admissionNo,
+      gender,
+      dateOfBirth,
+      admissionDate,
       address,
       status = "active",
     } = req.body;
 
-    if (!firstName || !lastName || !email || !password || !employeeNo) {
+    if (!firstName || !lastName || !email || !password || !registrationNo) {
       return sendError(
         res,
-        "First name, last name, email, password, and employee number are required",
+        "First name, last name, email, password, and registration number are required",
         400,
       );
     }
@@ -138,12 +149,23 @@ async function createTeacher(req, res, next) {
     }
 
     const [existingProfile] = await req.pool.query(
-      "SELECT id FROM teacher_profiles WHERE employee_no = ?",
-      [employeeNo],
+      "SELECT id FROM student_profiles WHERE registration_no = ?",
+      [registrationNo],
     );
 
     if (existingProfile.length > 0) {
-      return sendError(res, "Employee number already exists", 400);
+      return sendError(res, "Registration number already exists", 400);
+    }
+
+    if (admissionNo) {
+      const [existingAdmission] = await req.pool.query(
+        "SELECT id FROM student_profiles WHERE admission_no = ?",
+        [admissionNo],
+      );
+
+      if (existingAdmission.length > 0) {
+        return sendError(res, "Admission number already exists", 400);
+      }
     }
 
     const passwordHash = hashPassword(password);
@@ -154,7 +176,7 @@ async function createTeacher(req, res, next) {
     );
 
     const userId = result.insertId;
-    const roleId = await getTeacherRoleId(req);
+    const roleId = await getStudentRoleId(req);
 
     await req.pool.query(
       "INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
@@ -162,32 +184,35 @@ async function createTeacher(req, res, next) {
     );
 
     await req.pool.query(
-      "INSERT INTO teacher_profiles (user_id, employee_no, designation, qualification, joining_date, address) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO student_profiles (user_id, registration_no, admission_no, gender, date_of_birth, admission_date, address) VALUES (?, ?, ?, ?, ?, ?, ?)",
       [
         userId,
-        employeeNo,
-        designation || null,
-        qualification || null,
-        joiningDate || null,
+        registrationNo,
+        admissionNo || null,
+        gender || null,
+        dateOfBirth || null,
+        admissionDate || null,
         address || null,
       ],
     );
 
-    const [newTeacherRows] = await req.pool.query(
-      `SELECT u.id, u.first_name AS firstName, u.last_name AS lastName, u.email, u.phone, u.status, tp.employee_no AS employeeNo, tp.designation, tp.qualification, tp.joining_date AS joiningDate, tp.address
+    const [newStudentRows] = await req.pool.query(
+      `SELECT u.id, u.first_name AS firstName, u.last_name AS lastName, u.email, u.phone, u.status, 
+              sp.registration_no AS registrationNo, sp.admission_no AS admissionNo, sp.gender, 
+              sp.date_of_birth AS dateOfBirth, sp.admission_date AS admissionDate, sp.address
        FROM users u
-       LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+       LEFT JOIN student_profiles sp ON sp.user_id = u.id
        WHERE u.id = ?`,
       [userId],
     );
 
-    sendSuccess(res, newTeacherRows[0], "Teacher created successfully", 201);
+    sendSuccess(res, newStudentRows[0], "Student created successfully", 201);
   } catch (error) {
     next(error);
   }
 }
 
-async function updateTeacher(req, res, next) {
+async function updateStudent(req, res, next) {
   try {
     const { id } = req.params;
     const {
@@ -197,10 +222,11 @@ async function updateTeacher(req, res, next) {
       password,
       phone,
       status,
-      employeeNo,
-      designation,
-      qualification,
-      joiningDate,
+      registrationNo,
+      admissionNo,
+      gender,
+      dateOfBirth,
+      admissionDate,
       address,
     } = req.body;
 
@@ -210,11 +236,11 @@ async function updateTeacher(req, res, next) {
        JOIN user_roles ur ON u.id = ur.user_id
        JOIN roles r ON ur.role_id = r.id
        WHERE u.id = ? AND r.name = ?`,
-      [id, "Teacher"],
+      [id, "Student"],
     );
 
     if (existingRows.length === 0) {
-      return sendError(res, "Teacher not found", 404);
+      return sendError(res, "Student not found", 404);
     }
 
     const userRecord = existingRows[0];
@@ -268,21 +294,25 @@ async function updateTeacher(req, res, next) {
     const profileUpdates = [];
     const profileValues = [];
 
-    if (employeeNo !== undefined) {
-      profileUpdates.push("employee_no = ?");
-      profileValues.push(employeeNo);
+    if (registrationNo !== undefined) {
+      profileUpdates.push("registration_no = ?");
+      profileValues.push(registrationNo);
     }
-    if (designation !== undefined) {
-      profileUpdates.push("designation = ?");
-      profileValues.push(designation || null);
+    if (admissionNo !== undefined) {
+      profileUpdates.push("admission_no = ?");
+      profileValues.push(admissionNo || null);
     }
-    if (qualification !== undefined) {
-      profileUpdates.push("qualification = ?");
-      profileValues.push(qualification || null);
+    if (gender !== undefined) {
+      profileUpdates.push("gender = ?");
+      profileValues.push(gender || null);
     }
-    if (joiningDate !== undefined) {
-      profileUpdates.push("joining_date = ?");
-      profileValues.push(joiningDate || null);
+    if (dateOfBirth !== undefined) {
+      profileUpdates.push("date_of_birth = ?");
+      profileValues.push(dateOfBirth || null);
+    }
+    if (admissionDate !== undefined) {
+      profileUpdates.push("admission_date = ?");
+      profileValues.push(admissionDate || null);
     }
     if (address !== undefined) {
       profileUpdates.push("address = ?");
@@ -292,26 +322,28 @@ async function updateTeacher(req, res, next) {
     if (profileUpdates.length > 0) {
       profileValues.push(id);
       await req.pool.query(
-        `UPDATE teacher_profiles SET ${profileUpdates.join(", ")} WHERE user_id = ?`,
+        `UPDATE student_profiles SET ${profileUpdates.join(", ")} WHERE user_id = ?`,
         profileValues,
       );
     }
 
     const [updatedRows] = await req.pool.query(
-      `SELECT u.id, u.first_name AS firstName, u.last_name AS lastName, u.email, u.phone, u.status, tp.employee_no AS employeeNo, tp.designation, tp.qualification, tp.joining_date AS joiningDate, tp.address
+      `SELECT u.id, u.first_name AS firstName, u.last_name AS lastName, u.email, u.phone, u.status, 
+              sp.registration_no AS registrationNo, sp.admission_no AS admissionNo, sp.gender, 
+              sp.date_of_birth AS dateOfBirth, sp.admission_date AS admissionDate, sp.address
        FROM users u
-       LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+       LEFT JOIN student_profiles sp ON sp.user_id = u.id
        WHERE u.id = ?`,
       [id],
     );
 
-    sendSuccess(res, updatedRows[0], "Teacher updated successfully");
+    sendSuccess(res, updatedRows[0], "Student updated successfully");
   } catch (error) {
     next(error);
   }
 }
 
-async function deleteTeacher(req, res, next) {
+async function deleteStudent(req, res, next) {
   try {
     const { id } = req.params;
 
@@ -321,21 +353,21 @@ async function deleteTeacher(req, res, next) {
        JOIN user_roles ur ON u.id = ur.user_id
        JOIN roles r ON ur.role_id = r.id
        WHERE u.id = ? AND r.name = ?`,
-      [id, "Teacher"],
+      [id, "Student"],
     );
 
     if (existingRows.length === 0) {
-      return sendError(res, "Teacher not found", 404);
+      return sendError(res, "Student not found", 404);
     }
 
     try {
       await req.pool.query("DELETE FROM users WHERE id = ?", [id]);
-      sendSuccess(res, {}, "Teacher deleted successfully");
+      sendSuccess(res, {}, "Student deleted successfully");
     } catch (deleteError) {
       if (deleteError.code === "ER_ROW_IS_REFERENCED_2") {
         return sendError(
           res,
-          "Cannot delete this teacher. The teacher is assigned to classes, subjects, or has related assignments. Please remove these associations first.",
+          "Cannot delete this student. The student has enrollments, submissions, or related records. Please remove these associations first.",
           409,
         );
       }
@@ -347,9 +379,9 @@ async function deleteTeacher(req, res, next) {
 }
 
 module.exports = {
-  getTeachers,
-  getTeacherById,
-  createTeacher,
-  updateTeacher,
-  deleteTeacher,
+  getStudents,
+  getStudentById,
+  createStudent,
+  updateStudent,
+  deleteStudent,
 };

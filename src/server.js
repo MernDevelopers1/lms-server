@@ -12,6 +12,13 @@ const academicRoutes = require("./routes/academicRoutes");
 const assignmentRoutes = require("./routes/assignmentRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 const teacherRoutes = require("./routes/teacherRoutes");
+const studentRoutes = require("./routes/studentRoutes");
+const classRoutes = require("./routes/classRoutes");
+const liveClassRoutes = require("./routes/liveClassRoutes");
+const timetableRoutes = require("./routes/timetableRoutes");
+const sectionRoutes = require("./routes/sectionRoutes");
+const subjectRoutes = require("./routes/subjectRoutes");
+const lectureSlotRoutes = require("./routes/lectureSlotRoutes");
 
 const app = express();
 
@@ -83,6 +90,13 @@ app.get("/api/health/db", async (req, res, next) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/teachers", teacherRoutes);
+app.use("/api/students", studentRoutes);
+app.use("/api/classes", classRoutes);
+app.use("/api/sections", sectionRoutes);
+app.use("/api/subjects", subjectRoutes);
+app.use("/api/lecture-slots", lectureSlotRoutes);
+app.use("/api/live-classes", liveClassRoutes);
+app.use("/api/timetables", timetableRoutes);
 app.use("/api/academics", academicRoutes);
 app.use("/api/assignments", assignmentRoutes);
 app.use("/api/attendance", attendanceRoutes);
@@ -98,9 +112,14 @@ app.use((req, res) => {
 app.use((error, req, res, next) => {
   console.error(error);
 
-  res.status(error.status || 500).json({
+  const statusCode = error.statusCode || error.status || 500;
+  const message = error.message || "Internal server error";
+
+  res.status(statusCode).json({
     success: false,
-    message: error.message || "Internal server error",
+    message,
+    errors: error.errors || null,
+    timestamp: new Date().toISOString(),
   });
 });
 
